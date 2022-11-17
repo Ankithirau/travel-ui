@@ -1,0 +1,1341 @@
+$(document).ready(function () {
+
+    setTimeout(function () {
+        var table = $("#datatable").DataTable({
+            pageLength: 5,
+            lengthMenu: [
+                [5, 10, 20, 30],
+                [5, 10, 20, 30],
+            ],
+        });
+
+        $("#show_table").show(); 
+
+        // or fade, css display however you'd like.
+        // or fade, css display however you'd like.
+
+        $('#insert_btn').append(
+            '<input type="submit" id="form-button" value="Send Request" class="btn btn-primary mt-1" data-action="{{route(product.add_variation,isset($prices->id)?$prices->id:0)}}">'
+        );
+
+    }, 500);
+
+   
+
+    // reset modal form
+
+    if ($(".add-modal-btn").length) {
+        $(document).on("click", ".add-modal-btn", function () {
+            // $(".media-left").empty();
+            // $('.modal-content').trigger("reset");
+            $(".modal").find('form').trigger('reset');
+            $("option:selected").removeAttr("selected");
+            $(".select2-selection__rendered").empty();
+            $("#pointSelect").empty();
+            // $(this).closest('form').trigger("reset");
+        });
+    }
+
+    //get pickup-point
+    $(document).on("change", ".countySelect", function () {
+        var id = $(this).val();
+        var url = $(this).data('route');
+        $("#pointSelect").empty();
+        $.ajax({
+            type: "get",
+            url: url,
+            data: {
+                id: id
+            },
+            success: function (response) {
+
+                var res = JSON.parse(response);
+                var list = '';
+                if (res.data) {
+                    // list += '<option value="">Select Pickup point</option>';
+                    $.each(res.data, function (k, v) {
+                        for (let j = 0; j < v.length; j++) {
+                            list += '<option value="' + v[j].id + '">' + v[j].name.substr(0, 40) + '.....' + '</option>';
+
+                        }
+
+                    });
+                } else {
+                    list += '<option value="">Select Pickup point</option>';
+                }
+                $("#pointSelect").html(list);
+            }
+        });
+    });
+
+    var maxLength = 40;
+
+    $('.trim_select > option').text(function (i, text) {
+        if (text.length > maxLength) {
+            return text.substr(0, maxLength) + '...';
+        }
+    });
+
+    $(document).on("change", ".buses", function (e) {
+        // console.log(e);
+        $(this).closest("tr").find(".checkhour").attr("checked", true);
+    });
+
+    // toastr.options = {
+    //   closeButton: true,
+    //   debug: false,
+    //   newestOnTop: false,
+    //   progressBar: false,
+    //   positionClass: "toast-top-right",
+    //   preventDuplicates: false,
+    //   showDuration: "1000",
+    //   hideDuration: "1000",
+    //   timeOut: "5000",
+    //   extendedTimeOut: "1000",
+    //   showEasing: "swing",
+    //   hideEasing: "linear",
+    //   showMethod: "fadeIn",
+    //   hideMethod: "fadeOut",
+    // };
+
+    var clicked = false;
+
+    $(document).on("click", ".checkall", function () {
+        // console.log(clicked);
+        $(".checkhour").prop("checked", !clicked);
+
+        clicked = !clicked;
+
+        
+
+        this.innerHTML = clicked ? "Select" : "Deselect";
+    });
+
+    $(document).on("change", "#route", function () {
+        let route_id = $("#route").val();
+        let product_id = $("#product_id").val();
+        var url = $("#product_id").data("url");
+        // console.log(route);
+        $.ajax({
+            type: "GET",
+            url: url,
+            data: { route_id: route_id, product_id: product_id },
+            success: function (res) {
+                if (res.status) {
+                    showWarning(res.status);
+                    // console.log(res.status);
+                } else {
+                    if (res) {
+                        $("#get_routes").find("tbody").html(res);
+                    }
+                }
+                // console.log(res);
+            },
+        });
+    });
+
+    //Check Image Size
+    $("#image").bind("change", function () {
+        $(".has_error").remove();
+        $("#form-button").attr("type", "submit");
+        var a = this.files[0].size;
+        if (a > 1000000) {
+            $(this).after(
+                '<div class="text-danger has_error">Image size should be < 1MB</div>'
+            );
+            $("#form-button").attr("type", "button");
+        }
+    });
+
+
+    // $(document).on("click", ".btn-1", function () {
+    //     jqForm = $('#jquery-val-form');
+
+    //     jqForm.validate({
+    //         rules: {
+    //             name: {
+    //             required: true
+    //           }
+    //         }
+    //       });
+
+    // });
+
+    $(document).on("click", ".update_variation", function () {
+        var tr = $(this).closest("tr");
+        $(".has_error").remove();
+
+        var date = tr.find("input.date_concert").val();
+        var price = tr.find("input.price").val();
+        var county_id = tr.find("input.county_id").val();
+        var pickup_id = tr.find("input.pickup_id").val();
+        var product = tr.find("input.product").val();
+        var stock_quantity = tr.find("input.stock_quantity").val();
+        var formData = {
+            date: date,
+            price: price,
+            county_id: county_id,
+            pickup_id: pickup_id,
+            product: product,
+            stock_quantity: stock_quantity,
+        };
+        $.ajax({
+            method: "GET",
+            url: $(this).data("action"),
+            data: formData,
+            success: function (response) {
+                var data = JSON.parse(response);
+                // console.log(data);
+                // console.log(data.status);
+                // console.log(data.pickup_id);
+                if (data.status === 400) {
+                    if (data.stock_quantity) {
+                        $("#stock_" + data.pickup_id).after(
+                            '<div class="text-danger has_error">' +
+                            data.stock_quantity +
+                            "</div>"
+                        );
+                    }
+                    if (data.price) {
+                        $("#price_" + data.pickup_id).after(
+                            '<div class="text-danger has_error">' +
+                            data.price +
+                            "</div>"
+                        );
+                    }
+                } else if (data.status === 500) {
+                    showError(data.msg);
+                } else {
+                    //play();
+                    showSuccess(data.msg);
+                    if (data.redirect == true) {
+                        window.location.href = data.url;
+                    } else {
+                        location.reload();
+                    }
+                }
+                //$("#ajax-loader").hide();
+            },
+        }).fail(function (response, status, error) {
+            var data = response.responseJSON;
+            if (status === "error") {
+                $.each(data.errors, function (i, val) {
+                    $("input[name=" + i + "]").after(
+                        '<div class="text-danger has_error">' + val + "</div>"
+                    );
+                    if ($("textarea[name=" + i + "]").length) {
+                        $("textarea[name=" + i + "]").after(
+                            '<div class="text-danger has_error">' +
+                            val +
+                            "</div>"
+                        );
+                    }
+                    if ($("select[name=" + i + "]").length) {
+                        $("select[name=" + i + "]").after(
+                            '<div class="text-danger has_error">' +
+                            val +
+                            "</div>"
+                        );
+                    }
+                    // if (i == "pick_point_id") {
+                    //   $(".pick_point_id_error").text(val);
+                    // }
+                    if (i == "pick_point_id" || i == "counties_id") {
+                        $(".error_" + i).text(val);
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on("click", ".schedule_update", function () {
+        var url=$(this).data("action");
+        var tr = $(this).closest("tr");
+        $(".has_error").remove();
+        var row = $(this).parent();
+
+        var route_name = tr.find("select.routes option:selected").text();
+        if (route_name=="Select Route") {
+            route_name="";
+        }
+        var route_id = tr.find("select.routes").val();
+        var product_id = tr.find("input.product_id").val();
+        var booked_seat = tr.find("input.seat_count").val();
+        var schedule_date = tr.find("input.date_concert").val();
+        var pickup_point_id = tr.find("input.pickup_point_id").val();
+        var buses = tr.find("select.buses").val();
+
+        var formData = {
+            route_name: route_name.trim(),
+            route_id: route_id,
+            product_id: product_id,
+            booked_seat: booked_seat,
+            schedule_date: schedule_date,
+            pickup_point_id: pickup_point_id,
+            product_id: product_id,
+            buses: buses,
+        };
+        
+        $.ajax({
+            method: "GET",
+            url: url,
+            data: formData,
+            success: function (response) {
+                var data = JSON.parse(response);
+                if (data.status === 400) {
+                    if (data.route_name) {
+                        console.log(data.route_name);
+                        $("#route_name_" + data.pickup_id).after(
+                            '<div class="text-danger has_error text-center"><small>' +
+                            data.route_name +
+                            "</small></div>"
+                        );
+                    }
+                    if (data.buses) {
+                        $("#buses_" + data.pickup_id).after(
+                            '<div class="text-danger has_error text-center"><small>' +
+                            data.buses +
+                            "</small></div>"
+                        );
+                    }
+                } else if (data.status === 500) {
+                    showError(data.msg);
+                } else {
+                    showSuccess(data.msg);
+                    row.slideUp(300, function () {
+                        row.closest("tr").remove();
+                        $("table#get_routes tbody tr").each(function (index) {
+                            $(this)
+                                .children("td")
+                                .eq(0)
+                                .text(index + 1);
+                        });
+                    });
+                    // if (data.redirect == true) {
+                    //   window.location.href = data.url;
+                    // } else {
+                    //   location.reload();
+                    // }
+                }
+            },
+        }).fail(function (response, status, error) {
+            var data = response.responseJSON;
+            if (status === "error") {
+                $.each(data.errors, function (i, val) {
+                    $("input[name=" + i + "]").after(
+                        '<div class="text-danger has_error">' + val + "</div>"
+                    );
+                    if ($("textarea[name=" + i + "]").length) {
+                        $("textarea[name=" + i + "]").after(
+                            '<div class="text-danger has_error">' +
+                            val +
+                            "</div>"
+                        );
+                    }
+                    if ($("select[name=" + i + "]").length) {
+                        $("select[name=" + i + "]").after(
+                            '<div class="text-danger has_error">' +
+                            val +
+                            "</div>"
+                        );
+                    }
+                    if (i == "pick_point_id" || i == "counties_id") {
+                        $(".error_" + i).text(val);
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on("submit", "form[name=ajax_form]", function (e) {
+
+        if ($(".editor")[0]) {
+            var myEditor = document.querySelector('.editor')
+            var html = myEditor.children[0].innerHTML;
+            $("#product_desc").val(html);
+        }
+
+        var formData = new FormData(this);
+
+        e.preventDefault();
+        $(".has_error").remove();
+
+        $(".error-inline").text("");
+        var fail = false;
+
+
+        // console.log(html);
+        $(this)
+            .find("select, textarea, input")
+            .each(function () {
+                if (!$(this).prop("required")) {
+                } else {
+                    if (!$(this).val()) {
+                        fail = true;
+                        name = $(this).attr("name");
+                        $(this).after(
+                            '<div class="text-danger has_error">' +
+                            name +
+                            " is required</div>"
+                        );
+                    }
+                }
+            });
+        if (!fail) {
+            $.ajax({
+                type: $(this).attr("method"),
+                url: $(this).attr("action"),
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                // beforeSend: function () {
+                //   $("#ajax-loader").show();
+                // },
+                success: function (response) {
+                    // console.log("1", response);
+                    var data = JSON.parse(response);
+                    // console.log(data);
+                    if (data.status === 400) {
+                        $.each(data.error, function (i, val) {
+                            $("input[name=" + i + "]").after(
+                                '<div class="text-danger has_error">' +
+                                val +
+                                "</div>"
+                            );
+                            if ($("textarea[name=" + i + "]").length) {
+                                $("textarea[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            if ($("select[name=" + i + "]").length) {
+                                $("select[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                        });
+                    } else if (data.status === 500) {
+                        showError(data.msg);
+                        // swal("Sorry!", data.msg, "error");
+                    } else {
+                        if ($(".modal").length) {
+                            $(".modal").modal("hide");
+                        }
+
+                        showSuccess(data.msg);
+
+                        setTimeout(() => {
+                            if (data.redirect == true) {
+                                window.location.href = data.url;
+                            } else {
+                                location.reload();
+                            }
+                        }, 1000);
+                    }
+                },
+            }).fail(function (response, status, error) {
+                var data = response.responseJSON;
+                // console.log(data);
+                // console.log("2", data);
+                if (status === "error") {
+                    $.each(data.errors, function (i, val) {
+                        console.log(i, val);
+                        if (
+                            val == "Concert Date is required." ||
+                            val == "The price is required." ||
+                            val == "The stock quantity is required." ||
+                            val == "this is field is required."
+                        ) {
+                            $("." + i).text(val);
+                        } else {
+
+                            $("input[name=" + i + "]").after(
+                                '<div class="text-danger has_error">' +
+                                val +
+                                "</div>"
+                            );
+                            if ($("textarea[name=" + i + "]").length) {
+                                $("textarea[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            if ($("select[name=" + i + "]").length) {
+                                $("select[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            if (i == "pickup_point_id") {
+                                $("#pointSelect").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            if (i == "counties_id") {
+                                $("#counties_id").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            // if (i == "pickup_point_id" || i == "counties_id") {
+                            //     $(".error_" + i).text(val);
+                            // }
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    //Submit System Form
+    $(document).on("submit", "form[name=ajax_form_system]", function (e) {
+        var formData = new FormData(this);
+        e.preventDefault();
+        $(".has_error").hide();
+        var fail = false;
+        $(this)
+            .find("select, textarea, input")
+            .each(function () {
+                if (!$(this).prop("required")) {
+                } else {
+                    if (!$(this).val()) {
+                        fail = true;
+                        name = $(this).attr("name");
+                        $(this).after(
+                            '<div class="text-danger has_error">' +
+                            name +
+                            " is required</div>"
+                        );
+                    }
+                }
+            });
+        if (!fail) {
+            $.ajax({
+                type: $(this).attr("method"),
+                url: $(this).attr("action"),
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                // beforeSend: function () {
+                //   $("#ajax-loader").show();
+                // },
+                success: function (response) {
+                    var data = JSON.parse(response);
+                    if (data.status === 400) {
+                        $.each(data.error, function (i, val) {
+                            $("input[name=" + i + "]").after(
+                                '<div class="text-danger has_error">' +
+                                val +
+                                "</div>"
+                            );
+                            if ($("textarea[name=" + i + "]").length) {
+                                $("textarea[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                            if ($("select[name=" + i + "]").length) {
+                                $("select[name=" + i + "]").after(
+                                    '<div class="text-danger has_error">' +
+                                    val +
+                                    "</div>"
+                                );
+                            }
+                        });
+                    } else if (data.status === 500) {
+                        swal("Sorry!", data.msg, "error");
+                    } else {
+                        //play();
+                        swal("Great!", data.msg, "success").then(function () {
+                            if (data.redirect == true) {
+                                window.location.href = data.url;
+                            } else {
+                                location.reload();
+                            }
+                            // $("#form-button").prop('disabled', true);
+                            // $('.modal').modal('hide');
+                        });
+                    }
+                    //$("#ajax-loader").hide();
+                },
+            }).fail(function (response, status, error) {
+                var data = response.responseJSON;
+                if (status === "error") {
+                    $.each(data.errors, function (i, val) {
+                        $("input[name=" + i + "]").after(
+                            '<div class="text-danger has_error">' +
+                            val +
+                            "</div>"
+                        );
+                        if ($("textarea[name=" + i + "]").length) {
+                            $("textarea[name=" + i + "]").after(
+                                '<div class="text-danger has_error">' +
+                                val +
+                                "</div>"
+                            );
+                        }
+                        if ($("select[name=" + i + "]").length) {
+                            $("select[name=" + i + "]").after(
+                                '<div class="text-danger has_error">' +
+                                val +
+                                "</div>"
+                            );
+                        }
+                    });
+                }
+            });
+        }
+    });
+
+    //Append Selected text to input
+    if ($(".append_selected_text").length) {
+        $(".append_selected_text").change(function () {
+            var text = $(this).find("option:selected").text();
+            $(this).parent("div").find("input").val(text);
+        });
+    }
+
+    // View Record
+    $(document).on("click", ".viewRecord", function (e) {
+        $(".has_error").hide();
+        var url = $(this).data("url");
+        var title = $(this).data("title");
+        var row = $(this).parent();
+        $.ajax({
+            type: "get",
+            url: url,
+            success: function (response) {
+                $(".modal-content").html(response);
+            },
+        });
+    });
+
+    // Edit Record
+    $(document).on("click", ".editRecord", function (e) {
+        var url = $(this).data("url");
+        var updateAction = $(this).data("action");
+        var title = $(this).data("title");
+        var row = $(this).parent();
+
+        $.ajax({
+            type: "get",
+            url: url,
+            success: function (response) {
+                var data = JSON.parse(response);
+                if (data.status === 200) {
+                    $("#modal" + title).modal("show");
+                    $("#modal" + title)
+                        .find("form")
+                        .attr("action", updateAction);
+                    $("#modal" + title)
+                        .find("form")
+                        .append(
+                            '<input name="_method" type="hidden" value="PUT">'
+                        );
+                    $(".modal-title").text("Edit " + title);
+                    $("#form-button").text("Update");
+
+                    $.each(data.result, function (i, val) {
+                        // console.log('-----', i, val);
+                        const site_url = window.location.origin + '/images/uploads/slider/' + val;
+                        if (i == 'photo') {
+                            $('#banner_image').html('<img src="' + site_url + '" alt="avatar" height="64" width="100" class="cursor-pointer">');
+                        }
+                        if (
+                            i != "image" &&
+                            i != "image1" &&
+                            i != "image2" &&
+                            i != "image3" &&
+                            i != "image4" &&
+                            i != "image5" &&
+                            i != "image6" &&
+                            i != "file"
+                        ) {
+                            $("input[name=" + i + "]").val(val);
+                        }
+                        if ($("textarea[name=" + i + "]").length) {
+                            $("textarea[name=" + i + "]").val(val);
+                        }
+                        if (i == "role_id") {
+                            $("select[name=role]").val(val);
+                        } else {
+
+                            if (i == "discount_type") {
+                                var d_type = 1;
+                                if (val == "value") {
+                                    d_type = 2;
+                                }
+                                $("select[name=" + i + "]").val(d_type);
+                            } else {
+                                // console.log(i,val);
+                                if (i == "pickup_point_id") {
+                                    var list = "";
+                                    list += '<option value="">Select Pickup point</option>';
+                                    for (let p = 0; p < val.length; p++) {
+                                        list += '<option value="' + val[p].id + '" selected>' + val[p].name.substr(0, 40) + '.....' + '</option>';
+
+                                    }
+
+                                    $(".name_s").html(list);
+                                    // let point = val.split(",");
+
+                                    // for (let p = 0; p < point.length; p++) {
+                                    //     $(
+                                    //         ".name_s option[value=" +
+                                    //             point[p].trim() +
+                                    //             "]"
+                                    //     ).attr("selected", true);
+
+                                    //     $("#testSelect1_inputCount")
+                                    //         .css("visibility", "visible")
+                                    //         .text(point.length);
+
+                                    //     $(".multiselect-list ul li")
+                                    //         .find(
+                                    //             "[data-val='" +
+                                    //                 point[p].trim() +
+                                    //                 "']"
+                                    //         )
+                                    //         .prop("checked", true)
+                                    //         .addClass("active");
+
+                                    //     var value = $(
+                                    //         ".name_s option[value=" +
+                                    //             point[p].trim() +
+                                    //             "]"
+                                    //     ).text();
+                                    //     $(".multiselect-input").attr(
+                                    //         "value",
+                                    //         ""
+                                    //     );
+                                    //     $(".multiselect-input").val(value);
+                                    // }
+                                } else {
+                                    $("select[name=" + i + "]").val(val);
+                                }
+
+                                if (i == 'counties_id') {
+
+                                    var county_list = "";
+                                    for (let p = 0; p < val.length; p++) {
+
+                                        $('.countySelect option[value=' + val[p].id + ']').attr("selected", true);
+
+                                        county_list += '<li class="select2-selection__choice"><span class="select2-selection__choice__remove" role="presentation">×</span>' + val[p].name + '</li>';
+                                    }
+                                    $(".select2-selection__rendered").html(county_list);
+                                }
+                            }
+                        }
+                        if (i == "state_id") {
+                            setTimeout(function () {
+                                getAjaxDataPlace(
+                                    val,
+                                    $(".editRecord").data("place_list")
+                                );
+                            }, 500);
+                        }
+                        if (i == "place_id") {
+                            setTimeout(function () {
+                                $("select[name=" + i + "]").val(val);
+                            }, 1000);
+                        }
+
+                        if (
+                            i == "image" ||
+                            i == "image1" ||
+                            i == "image2" ||
+                            i == "image3" ||
+                            i == "image4" ||
+                            i == "image5" ||
+                            i == "image6"
+                        ) {
+                            if (val != null) {
+                                $("input[name=" + i + "]").prop(
+                                    "required",
+                                    false
+                                );
+                                $("input[name=" + i + "]").after(
+                                    '<div class="text-center mt-2"><img src="' +
+                                    val +
+                                    '" alt="Image" width="100px"> <a href="' +
+                                    val +
+                                    '" download title="Download" class="text-primary"><img src="" alt="Download"></a></div>'
+                                );
+                            }
+                            $("input[name=" + i + "]").after(
+                                '<input name="old_image" value="' +
+                                val +
+                                '" type="hidden">'
+                            );
+                        } else if (i == "file") {
+                            if ($(".uploaded-file").length) {
+                                $(".uploaded-file").html("");
+                            }
+                            if (val != "") {
+                                $("input[name=" + i + "]").after(
+                                    '<a href="' +
+                                    val +
+                                    '" taget="_blank" class="uploaded-file"><i class="fa fa-file-pdf-o"></i></a>'
+                                );
+                            }
+                            $("input[name=" + i + "]").after(
+                                '<input name="old_file" value="' +
+                                val +
+                                '" type="hidden">'
+                            );
+                        }
+                    });
+                } else {
+                    swal("Sorry!", data.msg, "error");
+                }
+            },
+        });
+    })
+
+    //Change  Record satus
+    $(document).on("click", ".updateStatus", function (e) {
+
+        var url = $(this).data("url");
+
+        var id = $(this).data("status_id");
+
+        var status = $(this).prop('checked') == true ? 1 : 0;
+
+        Swal.fire({
+            title: "Are you sure?",
+            text: "want to change status?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "OK",
+            customClass: {
+                confirmButton: "btn btn-danger",
+                cancelButton: "btn btn-outline-secondary ml-1",
+            },
+            buttonsStyling: false,
+        }).then(function (isConfirm) {
+            if (isConfirm.isConfirmed) {
+                $.ajax({
+                    type: "get",
+                    url: url,
+                    success: function (response) {
+                        var data = JSON.parse(response);
+                        // console.log(data);
+                        if (data.status === 200) {
+                            //play();
+                            showSuccess(data.msg);
+                            // swal("Success", data.msg, "success").then(function () {
+                            location.reload();
+                            // });
+                        } else {
+                            showError(data.msg);
+                            // swal("Sorry!", data.msg, "error");
+                        }
+                    },
+                });
+            } else {
+                // console.log(isConfirm);
+                if (isConfirm.isConfirmed == false) {
+                    if (status == 1) {
+                        $("#customSwitch" + id).prop("checked", false);
+                    } else {
+                        $("#customSwitch" + id).prop("checked", true);
+                    }
+                }
+            }
+        });
+
+    });
+
+    //Delete Record
+    $(document).on("click", ".deleteRecord", function (e) {
+        var url = $(this).data("url");
+        var row = $(this).parent();
+
+        Swal.fire({
+            title: "Are you sure?",
+            text: "want to delete?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "OK",
+            customClass: {
+                confirmButton: "btn btn-danger",
+                cancelButton: "btn btn-outline-secondary ml-1",
+            },
+            buttonsStyling: false,
+        }).then(function (isConfirm) {
+            if (isConfirm.isConfirmed) {
+                $.ajax({
+                    type: "POST",
+                    url: url,
+                    data: {
+                        _method: "DELETE",
+                        _token: $("meta[name='csrf-token']").attr("content"),
+                    },
+                    success: function (response) {
+                        var data = JSON.parse(response);
+                        if (data.status === 200) {
+                            // swal("Success", data.msg, "success").then(function () {
+                            showSuccess(data.msg);
+                            row.slideUp(300, function () {
+                                row.closest("tr").remove();
+                                $("table#table_list tbody tr").each(function (
+                                    index
+                                ) {
+                                    $(this)
+                                        .children("td")
+                                        .first()
+                                        .text(index + 1);
+                                });
+                            });
+                            // });
+                        } else {
+                            showError(data.msg);
+                        }
+                    },
+                });
+            }
+        });
+    });
+
+    //Remove Image
+    $(document).on("click", ".removeImage", function (e) {
+        var url = $(this).data("url");
+        var src = $(this).data("src");
+        var row = $(this).parent();
+        swal("Are you sure", "want to delete?", "warning", {
+            dangerMode: true,
+            buttons: true,
+        }).then(function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    type: "GET",
+                    url: url,
+                    data: {
+                        _token: $("meta[name='csrf-token']").attr("content"),
+                        src: src,
+                    },
+                    success: function (response) {
+                        var data = JSON.parse(response);
+                        if (data.status === 200) {
+                            //
+                            swal("Success", data.msg, "success").then(
+                                function () {
+                                    row.closest("div").remove();
+                                }
+                            );
+                        } else {
+                            swal("Sorry!", data.msg, "error");
+                        }
+                    },
+                });
+            }
+        });
+    });
+
+    //Change  Record satus
+    $(document).on("click", ".updateStatus", function (e) {
+
+        var url = $(this).data("url");
+
+        var id = $(this).data("status_id");
+
+        var status = $(this).prop('checked') == true ? 1 : 0;
+
+        Swal.fire({
+            title: "Are you sure?",
+            text: "want to change status?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "OK",
+            customClass: {
+                confirmButton: "btn btn-danger",
+                cancelButton: "btn btn-outline-secondary ml-1",
+            },
+            buttonsStyling: false,
+        }).then(function (isConfirm) {
+            if (isConfirm.isConfirmed) {
+                $.ajax({
+                    type: "get",
+                    url: url,
+                    success: function (response) {
+                        var data = JSON.parse(response);
+                        // console.log(data);
+                        if (data.status === 200) {
+                            //play();
+                            showSuccess(data.msg);
+                            // swal("Success", data.msg, "success").then(function () {
+                            location.reload();
+                            // });
+                        } else {
+                            showError(data.msg);
+                            // swal("Sorry!", data.msg, "error");
+                        }
+                    },
+                });
+            } else {
+                Swal.fire({
+                    title: 'Cancelled',
+                    text: 'Status not updated',
+                    icon: 'error',
+                    customClass: {
+                        confirmButton: 'btn btn-success'
+                    }
+                });
+                if (isConfirm.isConfirmed == false) {
+                    if (status == 1) {
+                        $("#customSwitch" + id).prop("checked", false);
+                    } else {
+                        $("#customSwitch" + id).prop("checked", true);
+                    }
+                }
+            }
+        });
+
+    });
+
+    //Convert kyc client to non-kyc client
+    $(document).on("click", ".updateKycStatus", function (e) {
+        var url = $(this).data("url");
+        swal("Are you sure", "want to convert?", "warning", {
+            dangerMode: true,
+            buttons: true,
+        }).then(function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    type: "get",
+                    url: url,
+                    success: function (response) {
+                        var data = JSON.parse(response);
+                        if (data.status === 200) {
+                            //play();
+                            swal("Success", data.msg, "success").then(
+                                function () {
+                                    location.reload();
+                                }
+                            );
+                        } else {
+                            swal("Sorry!", data.msg, "error");
+                        }
+                    },
+                });
+            }
+        });
+    });
+
+    $("#get_point").click(function () {
+        var selected = $(".counties_id").val();
+        var url = $(this).data("url");
+        $("#testSelect2").remove();
+        $(".pick_label").remove();
+
+        $.ajax({
+            type: "post",
+            url: url,
+            data: {
+                _token: $("meta[name='csrf-token']").attr("content"),
+                county: selected,
+            },
+            success: function (response) {
+                var data = JSON.parse(response);
+                if (data.status == 200) {
+
+                    var list = "";
+                    list +=
+                        '<label for="pick_point_id">Event Pick up Point</label></br><select name="pickup_point_id[]" class="form-control pickup_point_id select2" multiple id="testSelect4">';
+                    $.each(data.result, function (k, v) {
+                        if (v.length > 0) {
+                            for (let index = 0; index < v.length; index++) {
+                                list +=
+                                    '<option value="' +
+                                    v[index].id +
+                                    '">' +
+                                    v[index].name +
+                                    "</option>";
+                            }
+                        } else {
+                            list += '<option value="">No Place Found!</option>';
+                        }
+                    });
+                    list +=
+                        "</select><div class='text-danger error_pick_point_id error-inline'></div>";
+
+                    $("#pickup_point").html(list);
+                    $('.select2').each(function () {
+                        var $this = $(this);
+                        $this.wrap('<div class="position-relative"></div>');
+                        $this.select2({
+                            dropdownAutoWidth: true,
+                            width: '100%',
+                            dropdownParent: $this.parent()
+                        });
+                    });
+                    $("#countySelect").empty();
+                } else {
+                    $("#countySelect").html(
+                        '<div class="text-danger has_error">please select county</div>'
+                    );
+                }
+
+            },
+        });
+    });
+
+    //Inline form submit
+});
+
+function getCategoryData(type, url) {
+    $.ajax({
+        type: "get",
+        url: url,
+        data: {
+            type: type,
+        },
+        success: function (response) {
+            var data = JSON.parse(response);
+            var list = "";
+            if (data.length > 0) {
+                list += '<option value="">Select</option>';
+                $.each(data, function (k, v) {
+                    list +=
+                        '<option value="' +
+                        v.id +
+                        '">' +
+                        v.category +
+                        "</option>";
+                });
+            } else {
+                list += '<option value="">No Category Found!</option>';
+            }
+            $("#category").html(list);
+        },
+    });
+}
+
+function getAjaxData(id, url) {
+    $.ajax({
+        type: "get",
+        url: url,
+        data: {
+            id: id,
+        },
+        success: function (response) {
+            var data = JSON.parse(response);
+            var list = "";
+            if (data.length > 0) {
+                list += '<option value="">Select</option>';
+                $.each(data, function (k, v) {
+                    list +=
+                        '<option value="' +
+                        v.id +
+                        '">' +
+                        v.category +
+                        "</option>";
+                });
+            } else {
+                list += '<option value="">No Category Found!</option>';
+            }
+            $("#append_list").html(list);
+        },
+    });
+}
+
+//Get City List
+function getAjaxDataCity(id, url) {
+    $.ajax({
+        type: "get",
+        url: url,
+        data: {
+            id: id,
+        },
+        success: function (response) {
+            var data = JSON.parse(response);
+            var list = "";
+            if (data.length > 0) {
+                list += '<option value="">Select</option>';
+                $.each(data, function (k, v) {
+                    list +=
+                        '<option value="' + v.id + '">' + v.name + "</option>";
+                });
+            } else {
+                list += '<option value="">No City Found!</option>';
+            }
+            $("#append_list").html(list);
+        },
+    });
+}
+
+//Get Place List
+function getAjaxDataPlace(id, url) {
+    $.ajax({
+        type: "get",
+        url: url,
+        data: {
+            id: id,
+        },
+        success: function (response) {
+            var data = JSON.parse(response);
+            var list = "";
+            if (data.length > 0) {
+                list += '<option value="">Select</option>';
+                $.each(data, function (k, v) {
+                    list +=
+                        '<option value="' + v.id + '">' + v.name + "</option>";
+                });
+            } else {
+                list += '<option value="">No Place Found!</option>';
+            }
+            $("#place_id").html(list);
+        },
+    });
+}
+
+//Play alert sound
+function play() {
+    var audio = document.getElementById("audio");
+    audio.play();
+}
+
+function playAbeYaar() {
+    var audio = document.getElementById("abe-yaar");
+    audio.play();
+}
+
+//Logout function
+function logout() {
+    swal("Are you sure", "want to logout?", "warning", {
+        dangerMode: true,
+        buttons: true,
+    }).then(function (isConfirm) {
+        if (isConfirm) {
+            $(".logout-form").submit();
+        }
+    });
+}
+
+function isNumberKey(evt) {
+    var charCode = (evt.which) ? evt.which : event.keyCode;
+    var num = document.getElementById('someid').value;
+    if ((charCode > 31 && (charCode < 48 || charCode > 57)) || (num > 10)) {
+        if (num >= 10) {
+
+            $("#checkIn").html(
+                '<div class="text-danger has_error">choose Ticket checkIn from 1-10</div>'
+            );
+            $(".has_error").delay(1000);
+            document.getElementById('someid').value = "";
+        }
+        return false;
+    } else {
+        return true;
+    }
+
+}
+
+const isRtl = $("html").attr("data-textdirection") === "rtl";
+
+function showSuccess(msg) {
+    toastr["success"](msg, "Success!", {
+        closeButton: true,
+        tapToDismiss: false,
+        rtl: isRtl,
+    });
+}
+function showInfo(msg) {
+    toastr["info"](msg, "Info!", {
+        closeButton: true,
+        tapToDismiss: false,
+        rtl: isRtl,
+    });
+}
+function showError(msg) {
+    toastr["error"](msg, "Error!", {
+        closeButton: true,
+        tapToDismiss: false,
+        rtl: isRtl,
+    });
+}
+function showWarning(msg) {
+    toastr["warning"](msg, "Warning!", {
+        closeButton: true,
+        tapToDismiss: false,
+        rtl: isRtl,
+    });
+}
+
+
+
+/**
+ * @license
+ * Copyright 2021 Google LLC.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+// The following example creates five accessible and
+// focusable markers.
+function initMap() {
+    const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 12,
+        center: { lat: 51.54879, lng: -9.2637 },
+    });
+    // Set LatLng and title text for the markers. The first marker (Boynton Pass)
+    // receives the initial focus when tab is pressed. Use arrow keys to
+    // move between markers; press tab again to cycle through the map controls.
+    const tourStops = [
+        [{ lat: 51.54879, lng: -9.26374 }, "Boynton Pass"],
+        [{ lat: 51.53879, lng: -9.25374 }, "Airport Mesa"],
+        [{ lat: 51.52879, lng: -9.24374 }, "Chapel of the Holy Cross"],
+        [{ lat: 51.51879, lng: -9.23374 }, "Red Rock Crossing"],
+        [{ lat: 51.50879, lng: -9.22374 }, "Bell Rock"],
+    ];
+    const tourStopss = [{ lat: 51.54879, lng: -9.26374 }];
+    const flightPath = new google.maps.Polyline({
+        path: tourStopss,
+        geodesic: true,
+        strokeColor: "#FF0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 2,
+    });
+
+    flightPath.setMap(map);
+    // Create an info window to share between markers.
+    const infoWindow = new google.maps.InfoWindow();
+
+    // Create the markers.
+    const image = "https://gcdnb.pbrd.co/images/EsjrYbyrkSq7.png?o=1";
+
+    tourStops.forEach(([position, title], i) => {
+        const marker = new google.maps.Marker({
+            position,
+            map,
+            icon: image,
+            title: `${i + 1}. ${title}`,
+            label: {
+                text: `${i + 1}`, // codepoint from https://fonts.google.com/icons
+                fontFamily: "Material Icons",
+                color: "#0d0c0a",
+                fontSize: "0px",
+            },
+            optimized: false,
+        });
+
+        // Add a click listener for each marker, and set up the info window.
+        marker.addListener("click", () => {
+            infoWindow.close();
+            infoWindow.setContent(marker.getTitle());
+            infoWindow.open(marker.getMap(), marker);
+        });
+    });
+}
+
+window.initMap = initMap;
